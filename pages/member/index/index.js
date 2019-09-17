@@ -4,15 +4,17 @@ Page({
 		route : "member",
 		icons : e.requirejs("icons"),
 		member : {},
-    id:0
+    merch:false,
+    id:0,
+    openId: "",
 	},
 	onLoad : function (o) {
-    var that = this 
+    // var that = this 
   
-		e.url(o),
-		"" == e.getCache("userinfo") && wx.redirectTo({
-			url : "/pages/message/auth/index"
-		})
+		// e.url(o),
+		// "" == e.getCache("userinfo") && wx.redirectTo({
+		// 	url : "/pages/message/auth/index"
+		// })
  
 	},
   // 判断是否已经注册
@@ -107,13 +109,17 @@ Page({
   },
 	getInfo : function () {
 		var q= this;
-    var merchid = e.getCache("merchid")
-    if (merchid != "" || merchid != 0) {
+    var merchid = e.getCache("merchid");
+    // console.log(merchid);
+    // console.log(q.data.openId);
+    let openId = "sns_wa_"+q.data.openId;
+    if (merchid != "" && merchid != 0) {
       wx.hideTabBar()
       q.setData({
         id: merchid
       })  
       r.get("member", { merchid: merchid}, function (r) {
+        // console.log(r);
         0 != r.error ? wx.redirectTo({
           url: "/pages/message/auth/index"
         }) : q.setData({
@@ -124,8 +130,8 @@ Page({
       })
     }
     else{
-      wx.showTabBar()
-      r.get("member", { merchid: merchid}, function (r) {
+      r.get("member", { merchid: merchid, openid: openId}, function (r) {
+        // console.log(r);
         0 != r.error ? wx.redirectTo({
           url: "/pages/message/auth/index"
         }) : q.setData({
@@ -139,47 +145,82 @@ Page({
 	},
 	onShow : function () {
     var that = this 
-		that.getInfo()
+		// that.getInfo()
     r.get("plugins", {}, function (data) {
+      for (var i = 0; i < data.length; i++) {
+        if (data[i].identity=='merch'){
+          wx.hideTabBar()
+          that.setData({
+            merch: true
+          })
+        }
+      }
       that.setData({
         plugins: data
       })
     })
 	},
+  onHide: function () {
+    var that = this
+    that.setData({
+      merch: false
+    })
+  },
 	onShareAppMessage : function () {
 		return r.onShareAppMessage()
 	},
 
 
 
-  // //授权获取用户信息
-  // onGotUserInfo: function (i) {
-  //   var n = this,
-  //   a = e.getCache("userinfo");
-  //   a = i.userInfo;
-  //   if (a && !a.needauth)
-  //     return void (t && "function" == typeof t && t(a));
-  //   if (i.detail.errMsg == 'getUserInfo:ok'){
-  //     wx.login({
-  //       success: function (o) {
-  //         if (!o.code)
-  //           return void r.alert("获取用户登录态失败:" + o.errMsg);
-  //         r.post("wxapp/login", {
-  //           code: o.code
-  //         }, function (o) {
-  //           return o.error ? void r.alert("获取用户登录态失败:" + o.message) : o.isclose && i && "function" == typeof i ? void i(o.closetext, !0) : void r.get("wxapp/auth", {
-  //             data: i.detail.encryptedData,
-  //             iv: i.detail.iv,
-  //             sessionKey: o.session_key
-  //           }, function (e) {
-  //               n.getInfo();
-  //             })
-  //           })
-  //         } 
-  //     })
-  //   }
-  // },
-
-
+  //授权获取用户信息
+  onGotUserInfo: function (i) {
+    var n = this,
+    a = e.getCache("userinfo");
+    a = i.userInfo;
+    if (a && !a.needauth)
+      return void (t && "function" == typeof t && t(a));
+    if (i.detail.errMsg == 'getUserInfo:ok'){
+      wx.login({
+        success: function (o) {
+          // console.log(o);
+          if (!o.code)
+            return void r.alert("获取用户登录态失败:" + o.errMsg);
+          r.post("wxapp/login", {
+            code: o.code
+          }, function (o) {
+            // console.log(o);
+            // return;
+            return o.error ? void r.alert("获取用户登录态失败:" + o.message) : o.isclose && i && "function" == typeof i ? void i(o.closetext, !0) : void r.get("wxapp/auth", {
+              data: i.detail.encryptedData,
+              iv: i.detail.iv,
+              sessionKey: o.session_key
+            }, function (e) {
+              // console.log(e);
+              let openId = e.openId
+              n.setData({
+                openId: openId
+              })
+                n.getInfo();
+                r.get("plugins", {}, function (data) {
+                  for (var i = 0; i < data.length; i++) {
+                    if (data[i].identity == 'merch') {
+                      wx.hideTabBar()
+                      n.setData({
+                        merch: true,
+                        
+                      })
+                    }
+                  }
+                  n.setData({
+                    plugins: data,
+                    openId: openId
+                  })
+                })
+              })
+            })
+          } 
+      })
+    }
+  },
 
 })
